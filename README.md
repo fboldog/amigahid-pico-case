@@ -1,6 +1,6 @@
 # amigahid-pico case
 
-Parametric two-part snap-fit enclosure for the **amigahid-pico** PCB.
+Parametric two-part snap-fit enclosure for the [**amigahid-pico**](https://github.com/borb/amigahid-pico/) PCB.
 
 ![Screenshot of the case](assets/amigahid-pico-case.png)
 
