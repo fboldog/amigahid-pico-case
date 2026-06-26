@@ -25,8 +25,6 @@ command line with `-D 'view="..."'` (no need to edit the file):
 | `print` *(default)* | Both parts laid flat for printing — lid flipped lip-up. |
 | `parts` | Shell + lid upright, side by side. **Use this for STEP export.** |
 | `assembled` | Lid mated onto the shell. |
-| `section` | Assembled, sliced through a snap clip to inspect the wedge. |
-| `boss_section` | Shell sliced through an insert boss to inspect the blind bore. |
 
 ---
 
