@@ -72,6 +72,12 @@ boss_radius_inner = insert_bore_dia/2;                  // 2.2 mm -> 4.4 mm bore
 // M3 mounting holes (PCB-relative)
 mount_holes = [[57.785, 3.937], [57.785, 68.453]];
 
+// ── PCB support studs (no insert; mirror the bosses on the opposite side) ────
+stud_radius     = 2.5;
+// The front stud lands beneath the 1x08 header and fouls its legs. Shift it
+// toward the USB-A wall (-X) by this much to clear them. (Back stud unaffected.)
+stud_usba_offset = 5.0;
+
 // ── Derived ───────────────────────────────────────────────────────────────────
 cavity_width  = pcb_width + 2 * pcb_clearance;   // interior cavity footprint (PCB + clearance)
 cavity_depth  = pcb_depth + 2 * pcb_clearance;
@@ -245,10 +251,15 @@ module bottom_shell() {
             }
 
     // PCB support studs (no insert) mirroring the bosses on the opposite side,
-    // so the board rests on exactly four features (2 bosses + 2 studs).
-    for (mh = mount_holes)
-        translate([pcb_x0 + mh[0], pcb_y0 + mh[1], floor_thickness])
-            cylinder(h = boss_height, r = 2.5);
+    // so the board rests on exactly four features (2 bosses + 2 studs). The
+    // front stud (mount_holes[0]) is pulled toward USB-A to clear the 1x08 legs.
+    stud_positions = [
+        [pcb_x0 + mount_holes[0][0] - stud_usba_offset, pcb_y0 + mount_holes[0][1]],
+        [pcb_x0 + mount_holes[1][0],                    pcb_y0 + mount_holes[1][1]],
+    ];
+    for (s = stud_positions)
+        translate([s[0], s[1], floor_thickness])
+            cylinder(h = boss_height, r = stud_radius);
 }
 
 // ── Top lid ───────────────────────────────────────────────────────────────────
