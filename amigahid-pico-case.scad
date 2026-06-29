@@ -46,6 +46,10 @@ lid_thickness   = 2.5;
 pcb_clear_below = 3.0;   // gap below PCB (back-side SMD + insert boss depth)
 pcb_clear_above = 14.5;  // gap above PCB (IDC headers ~12 mm)
 corner_radius   = 2.5;
+// 45deg chamfer breaking the outer perimeter edge that meets the print bed: the
+// shell's BOTTOM edge and the lid plate's TOP edge (the lid prints flipped, so its
+// top face is bed-down too). Knocks off the sharp first-layer edge / elephant foot.
+edge_chamfer    = 0.4;
 
 // ── USB-A front-wall opening (Molex 67643 horizontal) ───────────────────────
 usba_cx           = 47.50;  // connector body centre, PCB-relative X (mirrored via board_x())
@@ -165,6 +169,42 @@ module rounded_box(width, depth, height, radius) {
     }
 }
 
+// A single 45deg chamfer band of height ch: it tapers from a ch-inset profile at
+// its base (z=0) up to the full profile at z=ch. Built from the SAME primitive
+// decomposition as rounded_box -- two crossing straight runs + four corner pieces
+// -- but each piece beveled: the straight runs are trapezoid prisms, the corners
+// are frustum cones (r-ch -> r). No hull()/offset() (both break FreeCAD's importer).
+// Insetting keeps the corner centres fixed, so the bevel is uniform all the way
+// around. Used base-up for a bottom edge, and mirrored in Z for a top edge.
+module chamfer_band(width, depth, radius, ch) {
+    // Straight run along X (front & back edges), beveled on both Y faces.
+    // Polygon is drawn in (y, z); multmatrix maps it to world Y/Z, extrude along X.
+    multmatrix([[0,0,1,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]])
+        translate([0, 0, radius]) linear_extrude(width - 2*radius)
+            polygon([[ch, 0], [depth - ch, 0], [depth, ch], [0, ch]]);
+    // Straight run along Y (left & right edges), beveled on both X faces.
+    // Polygon in (x, z); multmatrix maps it to world X/Z, extrude along Y.
+    multmatrix([[1,0,0,0],[0,0,1,0],[0,1,0,0],[0,0,0,1]])
+        translate([0, 0, radius]) linear_extrude(depth - 2*radius)
+            polygon([[ch, 0], [width - ch, 0], [width, ch], [0, ch]]);
+    // Four corners: frustum cones concentric with the rounded_box corner cylinders.
+    for (cx = [radius, width - radius], cy = [radius, depth - radius])
+        translate([cx, cy, 0]) cylinder(h = ch, r1 = radius - ch, r2 = radius);
+}
+
+// rounded_box with an optional 45deg chamfer on the bottom and/or top outer edge.
+module chamfered_box(width, depth, height, radius, ch_bot = 0, ch_top = 0) {
+    union() {
+        translate([0, 0, ch_bot])
+            rounded_box(width, depth, height - ch_bot - ch_top, radius);
+        if (ch_bot > 0)
+            chamfer_band(width, depth, radius, ch_bot);
+        if (ch_top > 0)
+            translate([0, 0, height]) mirror([0, 0, 1])
+                chamfer_band(width, depth, radius, ch_top);
+    }
+}
+
 // ── Snap bump (added onto the lip outer face) ─────────────────────────────────
 //  out = -1 -> protrude in -Y (front wall);  out = +1 -> protrude in +Y (back).
 //  The polygon is drawn in (y, z); multmatrix maps it onto world Y/Z and the
@@ -213,8 +253,9 @@ module clip_pocket_back(cx) {    // back wall, cut from inner face outward (+Y)
 // ── Bottom shell ──────────────────────────────────────────────────────────────
 module bottom_shell() {
     difference() {
-        // Outer body
-        rounded_box(outer_width, outer_depth, shell_height, corner_radius);
+        // Outer body (bottom edge chamfered where it meets the print bed)
+        chamfered_box(outer_width, outer_depth, shell_height, corner_radius,
+                      ch_bot = edge_chamfer);
 
         // Interior cavity (PCB footprint + clearance)
         translate([wall_thickness, wall_thickness, floor_thickness])
@@ -266,8 +307,9 @@ module bottom_shell() {
 module top_lid() {
     difference() {
         union() {
-            // Lid plate
-            rounded_box(outer_width, outer_depth, lid_thickness, corner_radius);
+            // Lid plate (top edge chamfered -- exterior face, bed-down when printed)
+            chamfered_box(outer_width, outer_depth, lid_thickness, corner_radius,
+                          ch_top = edge_chamfer);
 
             // Continuous alignment lip
             translate([lip_x0, lip_y0, -lip_height])
