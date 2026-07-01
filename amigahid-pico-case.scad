@@ -10,7 +10,7 @@
 //   IDC 2x5 x2 (Amiga ports)     -> top lid windows (long axis along Y)
 //   PinHeader 1x08 vertical       -> top lid window (long axis along Y)
 //   RPi Pico micro-USB            -> internal, no opening (firmware only)
-//   PinHeader 1x04 vertical       -> internal, no opening (future display)
+//   PinHeader 1x04 vertical       -> internal OLED wiring
 //   PinHeader 1x06 horizontal     -> internal, no opening (debug pins)
 //
 // PCB mounting: 2 bosses for M3 x 5 x 4 Voron heat-set inserts (4.4 mm holes);
@@ -88,6 +88,26 @@ cavity_depth  = pcb_depth + 2 * pcb_clearance;
 outer_width   = cavity_width + 2 * wall_thickness;
 outer_depth   = cavity_depth + 2 * wall_thickness;
 shell_height  = floor_thickness + pcb_clear_below + pcb_thickness + pcb_clear_above;
+
+// ── 1.3" OLED display mount (dimensions from OLEDHoleMount) ──────────────────
+// Mounting pattern centre, case-relative. The display is shifted forward from
+// the lid centre so the rear standoffs clear the two IDC header windows.
+oled_cx = outer_width / 2;
+oled_cy = 33.5;
+
+oled_window_width     = 35.0;
+oled_window_height    = 20.0;
+oled_window_y_offset  = 2.0;   // window centre relative to mounting pattern
+oled_mount_hole_x     = 25.5;
+oled_mount_hole_y     = 28.0;
+
+// Internal lid standoffs for M2-ish display screws. Pilot holes are blind from
+// the inside face, leaving the exterior lid unpierced.
+oled_standoff_height      = 3.0;
+oled_standoff_embed       = 0.3;  // overlap into lid plate for a solid union
+oled_standoff_radius      = 2.2;
+oled_screw_pilot_radius   = 0.8;
+oled_screw_pilot_depth    = 3.2;
 
 pcb_x0 = wall_thickness + pcb_clearance;   // PCB nominal origin (board is located by the bosses)
 pcb_y0 = wall_thickness + pcb_clearance;
@@ -250,6 +270,29 @@ module clip_pocket_back(cx) {    // back wall, cut from inner face outward (+Y)
         cube([snap_pocket_width, snap_pocket_depth + 0.2, snap_pocket_height]);
 }
 
+// Rectangular viewing window for the OLED glass.
+module oled_window_cutout() {
+    translate([oled_cx - oled_window_width/2,
+               oled_cy + oled_window_y_offset - oled_window_height/2,
+               -0.1])
+        cube([oled_window_width, oled_window_height, lid_thickness + 0.2]);
+}
+
+// Four underside standoffs on the lid, with blind pilot holes for display screws.
+module oled_lid_standoffs() {
+    for (sx = [-1, 1], sy = [-1, 1])
+        translate([oled_cx + sx * oled_mount_hole_x/2,
+                   oled_cy + sy * oled_mount_hole_y/2,
+                   -oled_standoff_height])
+            difference() {
+                cylinder(h = oled_standoff_height + oled_standoff_embed,
+                         r = oled_standoff_radius);
+                translate([0, 0, -0.1])
+                    cylinder(h = oled_screw_pilot_depth + 0.1,
+                             r = oled_screw_pilot_radius);
+            }
+}
+
 // ── Bottom shell ──────────────────────────────────────────────────────────────
 module bottom_shell() {
     difference() {
@@ -323,6 +366,9 @@ module top_lid() {
             // Snap bumps on the lip outer faces
             for (cx = clip_x_front) snap_bump(-1, lip_y0, cx);     // front
             for (cx = clip_x_back)  snap_bump(+1, lip_y_back, cx); // back
+
+            // OLED display standoffs on the lid underside
+            oled_lid_standoffs();
         }
 
         // Relief slits beside each bump (rim stays continuous above them)
@@ -340,7 +386,7 @@ module top_lid() {
             translate([board_x(idc[0]) - idc_x/2, pcb_y0 + idc[1] - idc_y/2, -lip_height - 0.1])
                 cube([idc_x, idc_y, lip_height + lid_thickness + 0.2]);
 
-        // (1x04 is internal -> no lid opening; reserved for a future display)
+        // (1x04 stays internal; the OLED uses the viewing window below)
 
         // PinHeader 1x08 window (vertical header near left edge -> 8 pins along Y)
         // Body centre PCB-rel (2.54, 12.06), body 2.54 x 20.32 mm.
@@ -348,6 +394,9 @@ module top_lid() {
         ph8_y = 21.0;   // long side (8-pin direction, Y)
         translate([board_x(2.54) - ph8_x/2, pcb_y0 + 12.06 - ph8_y/2, -lip_height - 0.1])
             cube([ph8_x, ph8_y, lip_height + lid_thickness + 0.2]);
+
+        // 1.3" OLED viewing window
+        oled_window_cutout();
     }
 }
 

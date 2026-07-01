@@ -119,3 +119,5 @@ A large mismatch means a feature failed to import — re-check the
 - After a test print, the main tuning knobs in the SCAD are `pcb_clearance`
   (board fit), the `snap_*` group (snap feel/retention), and the `usba_*` group
   (`usba_height` / `usba_z_above_pcb` for the USB-A opening size and height).
+  The OLED display window and internal lid standoffs are controlled by the
+  `oled_*` group.
