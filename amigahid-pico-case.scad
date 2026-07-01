@@ -99,23 +99,34 @@ outer_width   = cavity_width + 2 * wall_thickness;
 outer_depth   = cavity_depth + 2 * wall_thickness;
 shell_height  = floor_thickness + pcb_clear_below + pcb_thickness + pcb_clear_above;
 
-// ── 1.3" OLED display mount (dimensions from OLEDHoleMount) ──────────────────
+// ── OLED display mount ───────────────────────────────────────────────────────
+// "1.3"  -> original OLEDHoleMount display
+// "0.96" -> LCDWiki MC096-015; active area 21.74 x 10.86 mm
+//oled_display_size = "1.3";
+oled_display_size = "0.96";
+
 // Mounting pattern centre, case-relative. The display is shifted forward from
 // the lid centre so the rear standoffs clear the two IDC header windows.
 oled_cx = outer_width / 2;
 oled_cy = 33.5;
 
-oled_window_width     = 35.0;
-oled_window_height    = 20.0;
-oled_window_y_offset  = 2.0;   // window centre relative to mounting pattern
-oled_mount_hole_x     = 25.5;
-oled_mount_hole_y     = 28.0;
+oled_window_width = (oled_display_size == "0.96") ? 21.74 : 35.0;
+oled_window_height = (oled_display_size == "0.96") ? 10.86 : 20.0;
+
+// Window centre relative to the mounting pattern. The 0.96" active area is
+// offset toward the connector side of its PCB in the LCDWiki drawing.
+oled_window_y_offset = (oled_display_size == "0.96") ? -2.2 : 2.0;
+
+// The 0.96" hole spacing is derived from the four pad centres in the LCDWiki
+// 27.30 x 27.80 mm PCB drawing. Adjust these if your module differs.
+oled_mount_hole_x = (oled_display_size == "0.96") ? 23.5 : 25.5;
+oled_mount_hole_y = (oled_display_size == "0.96") ? 24.0 : 28.0;
 
 // Internal lid standoffs for M2-ish display screws. Pilot holes are blind from
 // the inside face, leaving the exterior lid unpierced.
 oled_standoff_height      = 3.0;
 oled_standoff_embed       = 0.3;  // overlap into lid plate for a solid union
-oled_standoff_radius      = 2.2;
+oled_standoff_radius      = (oled_display_size == "0.96") ? 1.75 : 2.2;
 oled_screw_pilot_radius   = 0.8;
 oled_screw_pilot_depth    = 3.2;
 
@@ -442,7 +453,7 @@ module top_lid() {
         if (keyboard_cable_opening == "top")
             keyboard_cable_top_lid_cutout();
 
-        // 1.3" OLED viewing window
+        // OLED viewing window
         oled_window_cutout();
     }
 }

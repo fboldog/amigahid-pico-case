@@ -120,7 +120,8 @@ A large mismatch means a feature failed to import — re-check the
   (board fit), the `snap_*` group (snap feel/retention), and the `usba_*` group
   (`usba_height` / `usba_z_above_pcb` for the USB-A opening size and height).
   The OLED display window and internal lid standoffs are controlled by the
-  `oled_*` group.
+  `oled_*` group. Set `oled_display_size` to `"1.3"` or `"0.96"`; the 0.96"
+  profile uses a 21.74 x 10.86 mm active-area window.
 - The keyboard cable exit is selected with `keyboard_cable_opening`: `"top"`
   keeps the original rectangular lid window, while `"side"` moves it to a
   6 mm U-shaped notch in the right wall of the bottom shell.
