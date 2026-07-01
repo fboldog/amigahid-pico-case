@@ -8,7 +8,7 @@
 // Connectors (positions taken from connector BODY centres in the .kicad_pcb):
 //   USB-A Molex 67643 Horizontal  -> front wall cutout (body overhangs front edge)
 //   IDC 2x5 x2 (Amiga ports)     -> top lid windows (long axis along Y)
-//   PinHeader 1x08 vertical       -> top lid window (long axis along Y)
+//   PinHeader 1x08 vertical       -> configurable keyboard cable opening
 //   RPi Pico micro-USB            -> internal, no opening (firmware only)
 //   PinHeader 1x04 vertical       -> internal OLED wiring
 //   PinHeader 1x06 horizontal     -> internal, no opening (debug pins)
@@ -82,6 +82,16 @@ stud_radius     = 2.5;
 // toward the USB-A wall (-X) by this much to clear them. (Back stud unaffected.)
 stud_usba_offset = 5.0;
 
+// ── Keyboard cable opening ───────────────────────────────────────────────────
+// "top"  -> original rectangular lid window over the 1x08 header
+// "side" -> 6 mm U-shaped notch in the right side wall, open to the lid seam
+keyboard_cable_opening      = "side";
+keyboard_cable_x_rel        = 2.54;   // 1x08 header body centre, PCB-relative
+keyboard_cable_y_rel        = 12.06;
+keyboard_cable_top_width    = 5.5;
+keyboard_cable_top_depth    = 21.0;
+keyboard_cable_side_dia     = 6.0;
+
 // ── Derived ───────────────────────────────────────────────────────────────────
 cavity_width  = pcb_width + 2 * pcb_clearance;   // interior cavity footprint (PCB + clearance)
 cavity_depth  = pcb_depth + 2 * pcb_clearance;
@@ -116,6 +126,9 @@ pcb_y0 = wall_thickness + pcb_clearance;
 // with USB-A on the front wall, so the board sits 180deg-rotated vs the KiCad
 // STEP frame -> every board-referenced X is mirrored through board_x().
 function board_x(x_rel) = pcb_x0 + pcb_width - x_rel;
+
+keyboard_cable_cx = board_x(keyboard_cable_x_rel);
+keyboard_cable_cy = pcb_y0 + keyboard_cable_y_rel;
 
 // Lip footprint (nests inside the cavity with lip_gap clearance)
 lip_x0     = wall_thickness + lip_gap;
@@ -293,6 +306,37 @@ module oled_lid_standoffs() {
             }
 }
 
+// Original rectangular top opening for the 1x08 keyboard header/cable.
+module keyboard_cable_top_lid_cutout() {
+    translate([keyboard_cable_cx - keyboard_cable_top_width/2,
+               keyboard_cable_cy - keyboard_cable_top_depth/2,
+               -lip_height - 0.1])
+        cube([keyboard_cable_top_width, keyboard_cable_top_depth,
+              lip_height + lid_thickness + 0.2]);
+}
+
+// Right-wall side cable exit. It is open to the lid seam so the cable can drop
+// into the shell before the lid is installed.
+module keyboard_cable_side_shell_cutout() {
+    r = keyboard_cable_side_dia / 2;
+    zc = shell_height - r;
+    translate([outer_width - wall_thickness - 0.1, keyboard_cable_cy, zc])
+        rotate([0, 90, 0])
+            cylinder(h = wall_thickness + 0.2, r = r);
+    translate([outer_width - wall_thickness - 0.1, keyboard_cable_cy - r, zc])
+        cube([wall_thickness + 0.2, keyboard_cable_side_dia, r + 0.1]);
+}
+
+// The right-side lid lip would otherwise sit behind the side notch and block the
+// cable. This clearance is hidden inside the shell when assembled.
+module keyboard_cable_side_lip_clearance() {
+    r = keyboard_cable_side_dia / 2;
+    x0 = lip_x0 + lip_width - lip_wall_thickness - 0.1;
+    translate([x0, keyboard_cable_cy - r, -lip_height - 0.1])
+        cube([outer_width - x0 + 0.2, keyboard_cable_side_dia,
+              lip_height + 0.2]);
+}
+
 // ── Bottom shell ──────────────────────────────────────────────────────────────
 module bottom_shell() {
     difference() {
@@ -312,8 +356,11 @@ module bottom_shell() {
             cube([usba_width, wall_thickness + 0.2, usba_height]);
 
         // (Pico USB is firmware-only -> no opening; PCB is notched/recessed there)
-        // (1x08 is a vertical header -> lid window, see top_lid)
+        // (1x08 keyboard cable opening is selected by keyboard_cable_opening)
         // (1x06 is internal -> no case opening)
+
+        if (keyboard_cable_opening == "side")
+            keyboard_cable_side_shell_cutout();
 
         // Snap pockets
         for (cx = clip_x_front) clip_pocket_front(cx);
@@ -375,6 +422,9 @@ module top_lid() {
         for (cx = clip_x_front) snap_slits(lip_y0, cx);                       // front ring band
         for (cx = clip_x_back)  snap_slits(lip_y_back - lip_wall_thickness, cx); // back ring band
 
+        if (keyboard_cable_opening == "side")
+            keyboard_cable_side_lip_clearance();
+
         // IDC 2x5 box-header windows
         // Footprint rotation 0: 2-pin axis along X, 5-pin axis along Y, so the
         // shroud is long in Y. Body (F.Fab) = 8.9 x 20.36 mm, centred on the
@@ -388,12 +438,9 @@ module top_lid() {
 
         // (1x04 stays internal; the OLED uses the viewing window below)
 
-        // PinHeader 1x08 window (vertical header near left edge -> 8 pins along Y)
-        // Body centre PCB-rel (2.54, 12.06), body 2.54 x 20.32 mm.
-        ph8_x = 5.5;    // short side
-        ph8_y = 21.0;   // long side (8-pin direction, Y)
-        translate([board_x(2.54) - ph8_x/2, pcb_y0 + 12.06 - ph8_y/2, -lip_height - 0.1])
-            cube([ph8_x, ph8_y, lip_height + lid_thickness + 0.2]);
+        // Optional top keyboard cable opening over the 1x08 header.
+        if (keyboard_cable_opening == "top")
+            keyboard_cable_top_lid_cutout();
 
         // 1.3" OLED viewing window
         oled_window_cutout();

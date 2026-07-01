@@ -121,3 +121,6 @@ A large mismatch means a feature failed to import — re-check the
   (`usba_height` / `usba_z_above_pcb` for the USB-A opening size and height).
   The OLED display window and internal lid standoffs are controlled by the
   `oled_*` group.
+- The keyboard cable exit is selected with `keyboard_cable_opening`: `"top"`
+  keeps the original rectangular lid window, while `"side"` moves it to a
+  6 mm U-shaped notch in the right wall of the bottom shell.
