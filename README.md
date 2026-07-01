@@ -119,3 +119,9 @@ A large mismatch means a feature failed to import — re-check the
 - After a test print, the main tuning knobs in the SCAD are `pcb_clearance`
   (board fit), the `snap_*` group (snap feel/retention), and the `usba_*` group
   (`usba_height` / `usba_z_above_pcb` for the USB-A opening size and height).
+  The OLED display window and internal lid standoffs are controlled by the
+  `oled_*` group. Set `oled_display_size` to `"1.3"` or `"0.96"`; the 0.96"
+  profile uses a 21.74 x 10.86 mm active-area window.
+- The keyboard cable exit is selected with `keyboard_cable_opening`: `"top"`
+  keeps the original rectangular lid window, while `"side"` moves it to a
+  5 mm U-shaped notch in the middle of the far/back wall of the bottom shell.

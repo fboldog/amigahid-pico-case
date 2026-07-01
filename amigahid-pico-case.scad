@@ -8,9 +8,9 @@
 // Connectors (positions taken from connector BODY centres in the .kicad_pcb):
 //   USB-A Molex 67643 Horizontal  -> front wall cutout (body overhangs front edge)
 //   IDC 2x5 x2 (Amiga ports)     -> top lid windows (long axis along Y)
-//   PinHeader 1x08 vertical       -> top lid window (long axis along Y)
+//   PinHeader 1x08 vertical       -> configurable keyboard cable opening
 //   RPi Pico micro-USB            -> internal, no opening (firmware only)
-//   PinHeader 1x04 vertical       -> internal, no opening (future display)
+//   PinHeader 1x04 vertical       -> internal OLED wiring
 //   PinHeader 1x06 horizontal     -> internal, no opening (debug pins)
 //
 // PCB mounting: 2 bosses for M3 x 5 x 4 Voron heat-set inserts (4.4 mm holes);
@@ -82,12 +82,53 @@ stud_radius     = 2.5;
 // toward the USB-A wall (-X) by this much to clear them. (Back stud unaffected.)
 stud_usba_offset = 5.0;
 
+// ── Keyboard cable opening ───────────────────────────────────────────────────
+// "top"  -> original rectangular lid window over the 1x08 header
+// "side" -> 5 mm U-shaped notch in the far/back wall, open to the lid seam
+keyboard_cable_opening      = "side";
+keyboard_cable_x_rel        = 2.54;   // 1x08 header body centre, PCB-relative
+keyboard_cable_y_rel        = 12.06;
+keyboard_cable_top_width    = 5.5;
+keyboard_cable_top_depth    = 21.0;
+keyboard_cable_side_dia     = 5.0;
+
 // ── Derived ───────────────────────────────────────────────────────────────────
 cavity_width  = pcb_width + 2 * pcb_clearance;   // interior cavity footprint (PCB + clearance)
 cavity_depth  = pcb_depth + 2 * pcb_clearance;
 outer_width   = cavity_width + 2 * wall_thickness;
 outer_depth   = cavity_depth + 2 * wall_thickness;
 shell_height  = floor_thickness + pcb_clear_below + pcb_thickness + pcb_clear_above;
+
+// ── OLED display mount ───────────────────────────────────────────────────────
+// "1.3"  -> original OLEDHoleMount display
+// "0.96" -> LCDWiki MC096-015; active area 21.74 x 10.86 mm
+//oled_display_size = "1.3";
+oled_display_size = "0.96";
+
+// Mounting pattern centre, case-relative. The display is shifted forward from
+// the lid centre so the rear standoffs clear the two IDC header windows.
+oled_cx = outer_width / 2;
+oled_cy = 33.5;
+
+oled_window_width = (oled_display_size == "0.96") ? 21.74 : 35.0;
+oled_window_height = (oled_display_size == "0.96") ? 10.86 : 20.0;
+
+// Window centre relative to the mounting pattern. The 0.96" active area is
+// offset toward the connector side of its PCB in the LCDWiki drawing.
+oled_window_y_offset = (oled_display_size == "0.96") ? -2.2 : 2.0;
+
+// The 0.96" hole spacing is derived from the four pad centres in the LCDWiki
+// 27.30 x 27.80 mm PCB drawing. Adjust these if your module differs.
+oled_mount_hole_x = (oled_display_size == "0.96") ? 23.5 : 25.5;
+oled_mount_hole_y = (oled_display_size == "0.96") ? 24.0 : 28.0;
+
+// Internal lid standoffs for M2-ish display screws. Pilot holes are blind from
+// the inside face, leaving the exterior lid unpierced.
+oled_standoff_height      = 3.0;
+oled_standoff_embed       = 0.3;  // overlap into lid plate for a solid union
+oled_standoff_radius      = (oled_display_size == "0.96") ? 1.75 : 2.2;
+oled_screw_pilot_radius   = 0.8;
+oled_screw_pilot_depth    = 3.2;
 
 pcb_x0 = wall_thickness + pcb_clearance;   // PCB nominal origin (board is located by the bosses)
 pcb_y0 = wall_thickness + pcb_clearance;
@@ -96,6 +137,10 @@ pcb_y0 = wall_thickness + pcb_clearance;
 // with USB-A on the front wall, so the board sits 180deg-rotated vs the KiCad
 // STEP frame -> every board-referenced X is mirrored through board_x().
 function board_x(x_rel) = pcb_x0 + pcb_width - x_rel;
+
+keyboard_cable_cx = board_x(keyboard_cable_x_rel);
+keyboard_cable_cy = pcb_y0 + keyboard_cable_y_rel;
+keyboard_cable_side_cx = outer_width / 2;
 
 // Lip footprint (nests inside the cavity with lip_gap clearance)
 lip_x0     = wall_thickness + lip_gap;
@@ -250,6 +295,60 @@ module clip_pocket_back(cx) {    // back wall, cut from inner face outward (+Y)
         cube([snap_pocket_width, snap_pocket_depth + 0.2, snap_pocket_height]);
 }
 
+// Rectangular viewing window for the OLED glass.
+module oled_window_cutout() {
+    translate([oled_cx - oled_window_width/2,
+               oled_cy + oled_window_y_offset - oled_window_height/2,
+               -0.1])
+        cube([oled_window_width, oled_window_height, lid_thickness + 0.2]);
+}
+
+// Four underside standoffs on the lid, with blind pilot holes for display screws.
+module oled_lid_standoffs() {
+    for (sx = [-1, 1], sy = [-1, 1])
+        translate([oled_cx + sx * oled_mount_hole_x/2,
+                   oled_cy + sy * oled_mount_hole_y/2,
+                   -oled_standoff_height])
+            difference() {
+                cylinder(h = oled_standoff_height + oled_standoff_embed,
+                         r = oled_standoff_radius);
+                translate([0, 0, -0.1])
+                    cylinder(h = oled_screw_pilot_depth + 0.1,
+                             r = oled_screw_pilot_radius);
+            }
+}
+
+// Original rectangular top opening for the 1x08 keyboard header/cable.
+module keyboard_cable_top_lid_cutout() {
+    translate([keyboard_cable_cx - keyboard_cable_top_width/2,
+               keyboard_cable_cy - keyboard_cable_top_depth/2,
+               -lip_height - 0.1])
+        cube([keyboard_cable_top_width, keyboard_cable_top_depth,
+              lip_height + lid_thickness + 0.2]);
+}
+
+// Far/back-wall cable exit, centred on that wall. It is open to the lid seam so
+// the cable can drop into the shell before the lid is installed.
+module keyboard_cable_side_shell_cutout() {
+    r = keyboard_cable_side_dia / 2;
+    zc = shell_height - r;
+    translate([keyboard_cable_side_cx, outer_depth - wall_thickness - 0.1, zc])
+        rotate([-90, 0, 0])
+            cylinder(h = wall_thickness + 0.2, r = r);
+    translate([keyboard_cable_side_cx - r, outer_depth - wall_thickness - 0.1, zc])
+        cube([keyboard_cable_side_dia, wall_thickness + 0.2, r + 0.1]);
+}
+
+// The back lid lip would otherwise sit behind the side notch and block the
+// cable. This clearance is hidden inside the shell when assembled.
+module keyboard_cable_side_lip_clearance() {
+    r = keyboard_cable_side_dia / 2;
+    y0 = lip_y_back - lip_wall_thickness - 0.1;
+    translate([keyboard_cable_side_cx - r, y0, -lip_height - 0.1])
+        cube([keyboard_cable_side_dia, outer_depth - y0 + 0.2,
+              lip_height + 0.2]);
+}
+
 // ── Bottom shell ──────────────────────────────────────────────────────────────
 module bottom_shell() {
     difference() {
@@ -269,8 +368,11 @@ module bottom_shell() {
             cube([usba_width, wall_thickness + 0.2, usba_height]);
 
         // (Pico USB is firmware-only -> no opening; PCB is notched/recessed there)
-        // (1x08 is a vertical header -> lid window, see top_lid)
+        // (1x08 keyboard cable opening is selected by keyboard_cable_opening)
         // (1x06 is internal -> no case opening)
+
+        if (keyboard_cable_opening == "side")
+            keyboard_cable_side_shell_cutout();
 
         // Snap pockets
         for (cx = clip_x_front) clip_pocket_front(cx);
@@ -323,11 +425,17 @@ module top_lid() {
             // Snap bumps on the lip outer faces
             for (cx = clip_x_front) snap_bump(-1, lip_y0, cx);     // front
             for (cx = clip_x_back)  snap_bump(+1, lip_y_back, cx); // back
+
+            // OLED display standoffs on the lid underside
+            oled_lid_standoffs();
         }
 
         // Relief slits beside each bump (rim stays continuous above them)
         for (cx = clip_x_front) snap_slits(lip_y0, cx);                       // front ring band
         for (cx = clip_x_back)  snap_slits(lip_y_back - lip_wall_thickness, cx); // back ring band
+
+        if (keyboard_cable_opening == "side")
+            keyboard_cable_side_lip_clearance();
 
         // IDC 2x5 box-header windows
         // Footprint rotation 0: 2-pin axis along X, 5-pin axis along Y, so the
@@ -340,14 +448,14 @@ module top_lid() {
             translate([board_x(idc[0]) - idc_x/2, pcb_y0 + idc[1] - idc_y/2, -lip_height - 0.1])
                 cube([idc_x, idc_y, lip_height + lid_thickness + 0.2]);
 
-        // (1x04 is internal -> no lid opening; reserved for a future display)
+        // (1x04 stays internal; the OLED uses the viewing window below)
 
-        // PinHeader 1x08 window (vertical header near left edge -> 8 pins along Y)
-        // Body centre PCB-rel (2.54, 12.06), body 2.54 x 20.32 mm.
-        ph8_x = 5.5;    // short side
-        ph8_y = 21.0;   // long side (8-pin direction, Y)
-        translate([board_x(2.54) - ph8_x/2, pcb_y0 + 12.06 - ph8_y/2, -lip_height - 0.1])
-            cube([ph8_x, ph8_y, lip_height + lid_thickness + 0.2]);
+        // Optional top keyboard cable opening over the 1x08 header.
+        if (keyboard_cable_opening == "top")
+            keyboard_cable_top_lid_cutout();
+
+        // OLED viewing window
+        oled_window_cutout();
     }
 }
 
