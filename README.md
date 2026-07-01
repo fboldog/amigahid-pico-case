@@ -124,4 +124,4 @@ A large mismatch means a feature failed to import — re-check the
   profile uses a 21.74 x 10.86 mm active-area window.
 - The keyboard cable exit is selected with `keyboard_cable_opening`: `"top"`
   keeps the original rectangular lid window, while `"side"` moves it to a
-  6 mm U-shaped notch in the right wall of the bottom shell.
+  5 mm U-shaped notch in the middle of the far/back wall of the bottom shell.

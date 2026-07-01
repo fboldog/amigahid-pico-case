@@ -84,13 +84,13 @@ stud_usba_offset = 5.0;
 
 // ── Keyboard cable opening ───────────────────────────────────────────────────
 // "top"  -> original rectangular lid window over the 1x08 header
-// "side" -> 6 mm U-shaped notch in the right side wall, open to the lid seam
+// "side" -> 5 mm U-shaped notch in the far/back wall, open to the lid seam
 keyboard_cable_opening      = "side";
 keyboard_cable_x_rel        = 2.54;   // 1x08 header body centre, PCB-relative
 keyboard_cable_y_rel        = 12.06;
 keyboard_cable_top_width    = 5.5;
 keyboard_cable_top_depth    = 21.0;
-keyboard_cable_side_dia     = 6.0;
+keyboard_cable_side_dia     = 5.0;
 
 // ── Derived ───────────────────────────────────────────────────────────────────
 cavity_width  = pcb_width + 2 * pcb_clearance;   // interior cavity footprint (PCB + clearance)
@@ -140,6 +140,7 @@ function board_x(x_rel) = pcb_x0 + pcb_width - x_rel;
 
 keyboard_cable_cx = board_x(keyboard_cable_x_rel);
 keyboard_cable_cy = pcb_y0 + keyboard_cable_y_rel;
+keyboard_cable_side_cx = outer_width / 2;
 
 // Lip footprint (nests inside the cavity with lip_gap clearance)
 lip_x0     = wall_thickness + lip_gap;
@@ -326,25 +327,25 @@ module keyboard_cable_top_lid_cutout() {
               lip_height + lid_thickness + 0.2]);
 }
 
-// Right-wall side cable exit. It is open to the lid seam so the cable can drop
-// into the shell before the lid is installed.
+// Far/back-wall cable exit, centred on that wall. It is open to the lid seam so
+// the cable can drop into the shell before the lid is installed.
 module keyboard_cable_side_shell_cutout() {
     r = keyboard_cable_side_dia / 2;
     zc = shell_height - r;
-    translate([outer_width - wall_thickness - 0.1, keyboard_cable_cy, zc])
-        rotate([0, 90, 0])
+    translate([keyboard_cable_side_cx, outer_depth - wall_thickness - 0.1, zc])
+        rotate([-90, 0, 0])
             cylinder(h = wall_thickness + 0.2, r = r);
-    translate([outer_width - wall_thickness - 0.1, keyboard_cable_cy - r, zc])
-        cube([wall_thickness + 0.2, keyboard_cable_side_dia, r + 0.1]);
+    translate([keyboard_cable_side_cx - r, outer_depth - wall_thickness - 0.1, zc])
+        cube([keyboard_cable_side_dia, wall_thickness + 0.2, r + 0.1]);
 }
 
-// The right-side lid lip would otherwise sit behind the side notch and block the
+// The back lid lip would otherwise sit behind the side notch and block the
 // cable. This clearance is hidden inside the shell when assembled.
 module keyboard_cable_side_lip_clearance() {
     r = keyboard_cable_side_dia / 2;
-    x0 = lip_x0 + lip_width - lip_wall_thickness - 0.1;
-    translate([x0, keyboard_cable_cy - r, -lip_height - 0.1])
-        cube([outer_width - x0 + 0.2, keyboard_cable_side_dia,
+    y0 = lip_y_back - lip_wall_thickness - 0.1;
+    translate([keyboard_cable_side_cx - r, y0, -lip_height - 0.1])
+        cube([keyboard_cable_side_dia, outer_depth - y0 + 0.2,
               lip_height + 0.2]);
 }
 
